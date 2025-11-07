@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Boater-Aid Mailing Cost Calculator — v2.5-PWA</title>
+<meta name="theme-color" content="#0a2745"/>
+<!-- Boater-Aid v2.5-PWA (Nov 2025)
+Includes: separate What's New dialog, bilingual README with JSON save/restore + edit instructions,
+UPS/Purolator comparison, editable parcel/courier rates, CSV export, PWA manifest+SW.
+Cache/storage bumped to v25 (from v24) for clean refresh. -->
+<style>
+  :root{--bg:#0a2745;--accent:#1e90ff;--card:#123a63;--muted:#cfe8ff;--good:#22c55e;--warn:#f59e0b;--bad:#ef4444}
+  html,body{height:100%}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,#0a2745 0%,#0b2f55 60%,#0c3963 100%);color:#f5fbff}
+  a{color:#8fd0ff}
+  .wrap{max-width:1220px;margin:28px auto;padding:16px}
+  .header{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .hleft{display:flex;gap:14px;align-items:center}
+  .logo{width:50px;height:50px;border-radius:12px;background:#1e90ff;display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+  .logo svg{filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}
+  .title h1{font-weight:800;font-size:clamp(20px,3.2vw,30px);margin:0}
+  .title p{margin:2px 0 0;color:#cfe8ff}
+  .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#0f3357;border:1px solid #2f5a8b;color:#cfe8ff;font-size:12px}
+  .btn{background:#1e90ff;color:white;border:none;padding:10px 14px;border-radius:12px;cursor:pointer}
+  .btn.secondary{background:#0f3357;color:#e7f4ff;border:1px solid #2f5a8b}
+  .btn.danger{background:#c0392b}
+  .btn.ghost{background:transparent;border:1px solid #3d6ea7;color:#cfe8ff}
+  .lang{display:flex;gap:8px}
+  .lang button{background:transparent;border:1px solid #3c6ea6;color:#cfe8ff;padding:6px 10px;border-radius:10px;cursor:pointer}
+  .lang button.active{background:#1e90ff;color:white;border-color:#1e90ff}
+  .card{background:var(--card);border:1px solid #276aa7;border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .rows{display:flex;flex-direction:column;gap:10px}
+  .row{display:grid;gap:10px;grid-template-columns:1fr}
+  @media(min-width:880px){.row{grid-template-columns:1.3fr 1.1fr 1.1fr 1fr 1fr .9fr auto}}
+  select,input{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #325c8f;background:#0f3357;color:#e7f4ff}
+  .k{font-variant-numeric:tabular-nums}
+  .total{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:12px;border-top:1px dashed #3a6aa1}
+  .note{font-size:12px;color:#b9d7ff}
+  .foot{margin-top:18px;color:#b5d7ff;font-size:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .tabs button{border:1px solid #3d6ea7;background:#0f3357;color:#cfe8ff;border-radius:999px;padding:6px 10px}
+  .tabs button.active{background:#1e90ff;color:#fff;border-color:#1e90ff}
+  dialog.card{color:#e7f4ff;position:relative}
+  dialog.card::backdrop{background:rgba(0,0,0,.80)}
+  .x{position:absolute;top:10px;right:10px;background:#0f3357;border:1px solid #2f5a8b;color:#e7f4ff;border-radius:10px;padding:4px 8px;cursor:pointer}
+  .cmp{margin-top:6px;font-size:12px;line-height:1.2;color:#d8ebff}
+  .cmp .up{color:#badcff}
+  .cmp .save{color:#22c55e}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="hleft">
+      <div class="logo" aria-hidden="true">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7l10 6 10-6"/><path d="M2 17l10 6 10-6"/><path d="M2 12l10 6 10-6"/></svg>
+      </div>
+      <div class="title">
+        <h1 data-t="title">Boater-Aid Mailing Cost Calculator</h1>
+        <p class="note" data-t="subtitle">Letters & Packages • EN/FR • PWA • Canada Post vs UPS/Purolator • v2.5-PWA (Nov 2025)</p>
+      </div>
+    </div>
+    <div class="bar">
+      <button class="btn ghost" onclick="openSettings()" data-t="settings">Rates & Settings</button>
+      <button class="btn" onclick="openReadme()">README</button>
+      <button class="btn secondary" onclick="openWhatsNew()" id="btn-whatsnew">What’s New</button>
+      <div class="lang">
+        <button class="active" id="lang-en">EN</button>
+        <button id="lang-fr">FR</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="bar" style="justify-content:space-between;flex-wrap:wrap">
+      <div class="pill" data-t="effective">Letters effective Jan 13, 2025 • Parcels & couriers are editable zone-averaged estimates</div>
+      <div class="note" data-t="src">Sources: official price sheets; courier tables are editable estimates (account/zone/surcharges vary).</div>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Mode">
+      <button id="tab-letters" class="active" data-t="tabLetters">Letters</button>
+      <button id="tab-packages" data-t="tabPackages">Packages</button>
+      <button id="tab-nm" data-t="tabNM">Neighbourhood Mail</button>
+    </div>
+
+    <div id="panel-letters" role="tabpanel" aria-labelledby="tab-letters" class="panel" style="margin-top:10px">
+      <div class="rows" id="rows-letters"></div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="addRowLetter" data-t="addRow">Add line</button>
+        <button class="btn secondary" id="resetLetters" data-t="reset">Reset</button>
+      </div>
+      <div class="total">
+        <div class="note" data-t="est">Estimated total</div>
+        <div style="text-align:right">
+          <div style="font-size:28px;font-weight:800" id="grand-letters">$0.00</div>
+          <div class="note" data-t="tax">Postage before taxes/surcharges.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="panel-packages" role="tabpanel" aria-labelledby="tab-packages" class="panel" style="margin-top:10px;display:none">
+      <div class="rows" id="rows-pack"></div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="addRowPack" data-t="addRow">Add line</button>
+        <button class="btn secondary" id="resetPack" data-t="reset">Reset</button>
+      </div>
+      <div class="total">
+        <div class="note" data-t="est">Estimated total</div>
+        <div style="text-align:right">
+          <div style="font-size:28px;font-weight:800" id="grand-pack">$0.00</div>
+          <div class="note" data-t="packNote">Courier comparisons are estimates. Edit in Settings for negotiated rates and zones.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="panel-nm" role="tabpanel" aria-labelledby="tab-nm" class="panel" style="margin-top:10px;display:none">
+      <div class="rows" id="rows-nm"></div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="addRowNM" data-t="addRow">Add line</button>
+        <button class="btn secondary" id="resetNM" data-t="reset">Reset</button>
+      </div>
+      <div class="total">
+        <div class="note" data-t="est">Estimated total</div>
+        <div style="text-align:right">
+          <div style="font-size:28px;font-weight:800" id="grand-nm">$0.00</div>
+          <div class="note" data-t="nmNote">Adds 1.3¢ national transportation fee automatically.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>© 2025 <a href="https://boater-aid.com" target="_blank">Boater-Aid.com</a> — All Rights Reserved</span><span>•</span>
+      <span>v2.5-PWA (Nov 2025)</span><span>•</span>
+      <a href="#" onclick="openAbout();return false" data-t="aboutLink">About & assumptions</a>
+      <span>•</span>
+      <a href="#" onclick="exportCSV();return false" data-t="export">Export CSV (lines)</a>
+      <span>•</span>
+      <a href="#" onclick="saveRatesJSON();return false" data-t="saveRates">Export Rates JSON</a>
+      <span>•</span>
+      <label class="pill" style="cursor:pointer"><input type="file" id="importRates" style="display:none" accept="application/json"> <span data-t="loadRates">Load Rates JSON</span></label>
+    </div>
+  </div>
+</div>
+
+<!-- About -->
+<dialog id="about" class="card" style="max-width:880px">
+  <button class="x" onclick="closeAbout()">✕</button>
+  <h3 style="margin:0 0 8px 0" data-t="aboutTitle">About & assumptions</h3>
+  <div class="note" data-t="aboutBody">
+    Letters use official Canada Post price sheets effective <b>Jan 13, 2025</b> (Lettermail & Letter-post). Neighbourhood Mail uses the national price sheet with the <b>1.3¢</b> transportation fee.
+    <br/><br/>Packages: zone-averaged retail estimates for <b>Small/Tracked Packet</b> (USA/INTL) and <b>Expedited Parcel</b> (domestic). For couriers (<b>UPS</b>, <b>Purolator</b>) we provide editable baseline tables (domestic Local/Regional/National + USA/INTL). Actual costs vary by origin/destination, volumetric weight, and account discounts/surcharges. Edit tables in <b>Rates & Settings</b>.
+  </div>
+  <div style="margin-top:10px"><button class="btn" onclick="closeAbout()" data-t="close">Close</button></div>
+</dialog>
+
+<!-- README -->
+<dialog id="readme" class="card" style="max-width:900px;max-height:80vh;overflow:auto">
+  <button class="x" onclick="closeReadme()">✕</button>
+  <h3 data-t="readmeTitle">README – Boater-Aid Mailing Cost Calculator (v2.5-PWA)</h3>
+  <div class="note" data-t="readmeBody">
+    <b>Overview:</b> Bilingual PWA estimates mailing costs for Canada Post letters, parcels, and Neighbourhood Mail, with comparison estimates for UPS and Purolator.
+    <ul>
+      <li>Use <b>Letters</b> for Lettermail & Letter-post (Canada, U.S.A., International).</li>
+      <li>Use <b>Packages</b> for Small/Tracked Packets & Expedited Parcel zones (Local, Regional, National).</li>
+      <li>Tick <b>UPS</b> or <b>Purolator</b> to compare courier prices side-by-side.</li>
+      <li><b>Neighbourhood Mail</b> adds the 1.3¢ transport fee automatically.</li>
+      <li><b>Rates & Settings</b>: edit parcel/courier tables; save to local storage; export/import JSON.</li>
+      <li>CSV export of all lines; offline PWA for GitHub Pages.</li>
+    </ul>
+  </div>
+
+  <!-- Bilingual JSON section (added for v2.5) -->
+  <div class="note" style="margin-top:8px">
+    <p><b>Saving & Restoring Rates:</b> You can export your edited parcel and courier tables to a
+    <b>JSON</b> file using <i>Export Rates JSON</i>. This lets you back up or share custom rates.
+    To restore, choose <i>Load Rates JSON</i> and select your saved file. The app also keeps your latest edits
+    automatically in your browser’s local storage.</p>
+
+    <p><b>Editing Rates JSON:</b> The exported file <code>rates_v25.json</code> can be opened in any text
+    editor (e.g., Notepad, VS Code). Each section contains weight limits and rates in Canadian dollars.
+    Example:
+<pre>{
+  "packRates": {
+    "spUSA": { "tiers": [[250,9.95],[500,12.95],[1000,19.95]] },
+    ...
+  },
+  "courierRates": {
+    "ups": { "domestic": { "local": [[1000,14.99],[5000,19.99]] }, ... }
+  }
+}</pre>
+    Edit only the numbers inside brackets (weights and prices), keeping commas and brackets intact.
+    After saving, use <i>Load Rates JSON</i> to re-import your file.</p>
+
+    <hr style="border:none;border-top:1px solid #2f5a8b;margin:8px 0"/>
+
+    <p><b>Sauvegarde et restauration des tarifs :</b> Vous pouvez exporter vos tableaux de tarifs modifiés
+    (colis et transporteurs) dans un fichier <b>JSON</b> via <i>Exporter Tarifs (JSON)</i>. Cela permet de
+    sauvegarder ou partager vos tarifs personnalisés. Pour restaurer, utilisez <i>Charger Tarifs (JSON)</i>
+    et sélectionnez votre fichier. L’application conserve aussi vos dernières modifications dans le stockage
+    local du navigateur.</p>
+
+    <p><b>Modifier le fichier JSON :</b> Le fichier exporté <code>rates_v25.json</code> peut être ouvert dans
+    n’importe quel éditeur de texte (Notepad, VS Code, etc.). Chaque section contient des limites de poids et
+    des tarifs en dollars canadiens. Exemple :
+<pre>{
+  "packRates": {
+    "spUSA": { "tiers": [[250,9.95],[500,12.95],[1000,19.95]] },
+    ...
+  },
+  "courierRates": {
+    "ups": { "domestic": { "local": [[1000,14.99],[5000,19.99]] }, ... }
+  }
+}</pre>
+    Modifiez uniquement les chiffres dans les crochets (poids et prix), en gardant virgules et crochets intacts.
+    Après enregistrement, utilisez <i>Charger Tarifs (JSON)</i> pour réimporter votre fichier.</p>
+  </div>
+
+  <div style="margin-top:10px"><button class="btn" onclick="closeReadme()" data-t="close">Close</button></div>
+</dialog>
+
+<!-- WHAT'S NEW -->
+<dialog id="whatsnew" class="card" style="max-width:760px;max-height:80vh;overflow:auto">
+  <button class="x" onclick="closeWhatsNew()">✕</button>
+  <h3>What’s New — v2.5 (Nov 2025)</h3>
+  <ul class="note" style="line-height:1.45">
+    <li>Final 2025 release label: <b>v2.5-PWA</b> (headers/footers updated).</li>
+    <li><b>Bilingual README addition</b> explaining JSON export/restore and safe editing.</li>
+    <li>Fresh PWA cache key <code>ba-mailcalc-v25</code> for clean upgrade from v2.4.</li>
+    <li>Minor copy/i18n polish; dialogs remain opaque with ✕ close buttons.</li>
+  </ul>
+  <div style="margin-top:10px"><button class="btn" onclick="closeWhatsNew()">Close</button></div>
+</dialog>
+
+<!-- Settings -->
+<dialog id="settings" class="card" style="max-width:1000px;max-height:80vh;overflow:auto">
+  <button class="x" onclick="closeSettings()">✕</button>
+  <h3 style="margin:0 0 8px 0" data-t="settingsTitle">Rates & Settings</h3>
+  <div class="note" data-t="settingsBody">Letters are fixed by official sheets. Parcel & courier tables below are editable estimates (CAD per piece, before tax). Save to local storage and export/import JSON for reuse.</div>
+
+  <details open>
+    <summary><b data-t="lettersHdr">Letters (fixed by Canada Post price sheets)</b></summary>
+    <div class="note">Jan 13, 2025 tables are embedded; adjust only if Canada Post changes rates.</div>
+  </details>
+
+  <details open>
+    <summary><b data-t="packHdr">Packages (Canada Post – editable estimates)</b></summary>
+    <div class="note" style="margin:6px 0" data-t="packHdrNote">Small/Tracked Packet (USA/INTL) and Expedited Parcel (Local/Regional/National). All numbers are CAD per piece before tax.</div>
+    <div id="packRatesEditor" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"></div>
+  </details>
+
+  <details open>
+    <summary><b>Couriers (UPS & Purolator — editable estimates)</b></summary>
+    <div class="note">Provide zone-averaged retail baselines; replace with your negotiated rates. Tables by destination: Domestic (Local/Regional/National), USA, International.</div>
+    <div id="courierRatesEditor" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>
+  </details>
+
+  <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn" onclick="saveAllEdits()" data-t="save">Save</button>
+    <button class="btn secondary" onclick="loadDefaultsAll()" data-t="restore">Restore defaults</button>
+    <button class="btn ghost" onclick="closeSettings()" data-t="close">Close</button>
+  </div>
+</dialog>
+
+<script>
+/***** i18n *****/
+const T={en:{
+  title:"Boater-Aid Mailing Cost Calculator",
+  subtitle:"Letters & Packages • EN/FR • PWA • Canada Post vs UPS/Purolator • v2.5-PWA (Nov 2025)",
+  effective:"Letters effective Jan\u00A013,\u00A02025 \u2022 Parcels & couriers are editable zone\u2011averaged estimates",
+  src:"Sources: official price sheets; courier tables are editable estimates (account/zone/surcharges vary).",
+  settings:"Rates & Settings",tabLetters:"Letters",tabPackages:"Packages",tabNM:"Neighbourhood Mail",
+  addRow:"Add line",reset:"Reset",est:"Estimated total",tax:"Postage before taxes/surcharges.",
+  packNote:"Courier comparisons are estimates. Edit in Settings for negotiated rates and zones.",
+  nmNote:"Adds 1.3\u00A2 national transportation fee automatically.",aboutLink:"About & assumptions",aboutTitle:"About & assumptions",
+  aboutBody:"Letters use official Canada Post price sheets effective <b>Jan\u00A013,\u00A02025</b> (Lettermail & Letter\u2011post). Neighbourhood Mail uses the national price sheet with the <b>1.3\u00A2</b> transportation fee. <br/><br/>Packages: zone\u2011averaged retail estimates for <b>Small/Tracked Packet</b> (USA/INTL) and <b>Expedited Parcel</b> (domestic). For couriers (<b>UPS</b>, <b>Purolator</b>) we provide editable baseline tables (domestic local/regional/national + USA/INTL). Actual costs vary by origin/destination, volumetric weight, and account discounts/surcharges. Edit tables in <b>Rates & Settings</b>.",
+  close:"Close",export:"Export CSV (lines)",saveRates:"Export Rates JSON",loadRates:"Load Rates JSON",
+  settingsTitle:"Rates & Settings",settingsBody:"Letters are fixed by official sheets. Parcel & courier tables below are editable estimates (CAD per piece, before tax). Save to local storage and export/import JSON for reuse.",lettersHdr:"Letters (fixed by Canada Post price sheets)",packHdr:"Packages (Canada Post \u2013 editable estimates)",packHdrNote:"Small/Tracked Packet (USA/INTL) and Expedited Parcel (Local/Regional/National). All numbers are CAD per piece before tax.",save:"Save",restore:"Restore defaults",
+  // row labels
+  dest:"Destination",mailtype:"Type",size:"Size",pay:"Payment",weight:"Weight (g)",qty:"Qty",per:"$/piece",rowTotal:"Row total",
+  canada:"Canada",usa:"U.S.A.",intl:"International",
+  letterStd:"Letter \u2013 Standard (machineable)",letterOther:"Letter \u2013 Non\u2011standard / Oversize",
+  single:"Single stamp",booklet:"Booklet/Coil/Panes",meter:"Meter / Indicia",incentive:"Incentive Lettermail (business)",
+  packSPUSA:"Small Packet \u2013 USA (Air)",packTPUSA:"Tracked Packet \u2013 USA",packSPINTL:"Small Packet \u2013 International (Air)",packTPINTL:"Tracked Packet \u2013 International",packEXPD:"Expedited Parcel (Domestic)",
+  zone:"Zone",local:"Local",regional:"Regional",national:"National",
+  pkgSize:"Package size",pkgLetter:"Letter (<=500 g)",pkgSmall:"Small (<=1 kg)",pkgMedium:"Medium (<=5 kg)",pkgLarge:"Large (<=30 kg)",
+  remove:"Remove",
+  compare:"Compare with couriers",cmpUPS:"UPS",cmpPuro:"Purolator",cmpSavings:"Savings vs Canada Post",
+  readmeTitle:"README – Boater-Aid Mailing Cost Calculator (v2.5-PWA)",
+},fr:{
+  title:"Calculateur des frais d\u2019envoi Boater\u2011Aid",
+  subtitle:"Lettres & Colis \u2022 FR/EN \u2022 PWA \u2022 Postes Canada vs UPS/Purolator \u2022 v2.5\u2011PWA (nov. 2025)",
+  effective:"Lettres en vigueur le 13 janv. 2025 \u2022 Estimations colis & transporteurs (modifiables)",
+  src:"Sources : fiches officielles ; tableaux transporteurs modifiables (comptes/zones/suppl. variables).",
+  settings:"Tarifs & Param\u00E8tres",tabLetters:"Lettres",tabPackages:"Colis",tabNM:"Courrier de voisinage",
+  addRow:"Ajouter une ligne",reset:"R\u00E9initialiser",est:"Total estim\u00E9",tax:"Montants avant taxes/suppl.",
+  packNote:"Comparaisons transporteurs = estimations. Modifiez dans Param\u00E8tres selon vos tarifs n\u00E9goci\u00E9s.",
+  nmNote:"Ajoute automatiquement 1,3\u00A2 de transport.",aboutLink:"\u00C0 propos & hypoth\u00E8ses",aboutTitle:"\u00C0 propos & hypoth\u00E8ses",
+  aboutBody:"Les lettres utilisent les fiches officielles (<b>13 janv. 2025</b>). Le Courrier de voisinage applique 1,3\u00A2 de transport. <br/><br/>Colis : estimations moyennes (Small/Tracked Packet USA/INTL, Colis Acc\u00E9l\u00E9r\u00E9 domestique). Pour <b>UPS</b> et <b>Purolator</b>, des tableaux modifiables sont fournis (domestique local/r\u00E9gional/national + USA/INTL). Les prix r\u00E9els varient.",
+  close:"Fermer",export:"Exporter CSV (lignes)",saveRates:"Exporter Tarifs (JSON)",loadRates:"Charger Tarifs (JSON)",
+  settingsTitle:"Tarifs & Param\u00E8tres",settingsBody:"Lettres = fiches officielles. Tableaux colis & transporteurs = estimations modifiables (CAD/pi\u00E8ce, hors taxes).",
+  lettersHdr:"Lettres (fiches officielles)",packHdr:"Colis (Postes Canada \u2013 estimations modifiables)",packHdrNote:"Small/Tracked Packet (USA/INTL), Colis Acc\u00E9l\u00E9r\u00E9 (Local/R\u00E9gional/National).",
+  dest:"Destination",mailtype:"Type",size:"Format",pay:"Paiement",weight:"Poids (g)",qty:"Qt\u00E9",per:"$/pi\u00E8ce",rowTotal:"Total ligne",
+  canada:"Canada",usa:"\u00C9.-U.",intl:"International",
+  letterStd:"Lettre \u2013 Standard (m\u00E9canisable)",letterOther:"Lettre \u2013 Non standard / Surdim.",
+  single:"Timbre unit.",booklet:"Carnet/Rouleau",meter:"Compteur / Indicia",incentive:"Lettre incitative (entreprise)",
+  packSPUSA:"Small Packet \u2013 \u00C9.-U. (Air)",packTPUSA:"Tracked Packet \u2013 \u00C9.-U.",packSPINTL:"Small Packet \u2013 International (Air)",packTPINTL:"Tracked Packet \u2013 International",packEXPD:"Colis Acc\u00E9l\u00E9r\u00E9 (domestique)",
+  zone:"Zone",local:"Local",regional:"R\u00E9gional",national:"National",
+  pkgSize:"Taille du colis",pkgLetter:"Lettre (<=500 g)",pkgSmall:"Petit (<=1 kg)",pkgMedium:"Moyen (<=5 kg)",pkgLarge:"Grand (<=30 kg)",
+  remove:"Supprimer",
+  compare:"Comparer avec transporteurs",cmpUPS:"UPS",cmpPuro:"Purolator",cmpSavings:"\u00C9conomie vs Postes Canada",
+  readmeTitle:"README – Calculateur Boater\u2011Aid (v2.5\u2011PWA)",
+}}
+
+/***** Data *****/
+function money(x){return (x||0).toLocaleString(undefined,{style:'currency',currency:'CAD'})}
+// Letters (Jan 13, 2025)
+const letterRates={
+  canada:{
+    standard:{single:{up30:1.44,up50:1.75},booklet:{up30:1.24,up50:1.75},meter:{up30:1.23,up50:1.75},indicia:{up30:1.24,up50:1.75},incentive:{up30:1.23,up50:1.74}},
+    other:{single:{up100:2.61,up200:4.29,up300:5.98,up400:6.85,up500:7.36},booklet:{up100:2.61},meter:{up100:2.61,up200:4.29,up300:5.98,up400:6.85,up500:7.36},indicia:{up100:2.61,up200:4.29,up300:5.98,up400:6.85,up500:7.36},incentive:{up100:2.60,over100PerG:0.0106}}
+  },
+  usa:{standard:{stamp:{up30:1.75,up50:2.61},meter:{up30:1.75,up50:2.61}},other:{stamp:{up100:4.29,up200:7.49,up500:14.99},meter:{up100:4.08,up200:7.38,up500:14.70}}},
+  intl:{standard:{stamp:{up30:3.65,up50:5.21},meter:{up30:3.58,up50:5.20}},other:{stamp:{up100:8.60,up200:14.99,up500:29.96},meter:{up100:8.46,up200:14.70,up500:29.41}}}
+};
+// Neighbourhood Mail (Jan 13, 2025)
+const nmRates={standard:{up50:0.184,up100:0.211,over100Base:0.318,perGOver100:0.0028,transport:0.013},oversize:{up50:0.200,up100:0.232,over100Base:0.339,perGOver100:0.0028,transport:0.013}};
+// Canada Post parcel estimates (editable)
+let packRatesDefaults={
+  spUSA:{label:"Small Packet \u2013 USA (Air)",tiers:[[250,9.95],[500,12.95],[1000,19.95]]},
+  tpUSA:{label:"Tracked Packet \u2013 USA",tiers:[[250,16.95],[500,19.95],[1000,24.95]]},
+  spINTL:{label:"Small Packet \u2013 INTL (Air)",tiers:[[250,12.95],[500,20.95],[1000,28.95],[2000,39.95]]},
+  tpINTL:{label:"Tracked Packet \u2013 INTL",tiers:[[250,22.95],[500,28.95],[1000,36.95],[2000,49.95]]},
+  expdLocal:{label:"Expedited Parcel Local",tiers:[[1000,12.99],[5000,16.49],[30000,24.99]]},
+  expdRegional:{label:"Expedited Parcel Regional",tiers:[[1000,14.99],[5000,19.99],[30000,29.99]]},
+  expdNational:{label:"Expedited Parcel National",tiers:[[1000,17.99],[5000,24.99],[30000,34.99]]}
+};
+// Courier estimates (editable)
+let courierDefaults={
+  ups:{domestic:{local:[[1000,14.99],[5000,19.99],[30000,29.99]],regional:[[1000,17.99],[5000,24.99],[30000,36.99]],national:[[1000,19.99],[5000,29.99],[30000,42.99]]},usa:{tiers:[[250,17.95],[500,22.95],[1000,29.95],[2000,39.95],[5000,59.95]]},intl:{tiers:[[250,24.95],[500,34.95],[1000,44.95],[2000,64.95],[5000,94.95]]}},
+  purolator:{domestic:{local:[[1000,13.99],[5000,18.99],[30000,28.99]],regional:[[1000,16.99],[5000,22.99],[30000,34.99]],national:[[1000,18.99],[5000,27.99],[30000,39.99]]},usa:{tiers:[[250,18.95],[500,24.95],[1000,31.95],[2000,41.95],[5000,62.95]]},intl:{tiers:[[250,25.95],[500,35.95],[1000,46.95],[2000,66.95],[5000,96.95]]}}
+};
+// v2.5 storage keys (migrate v2.4 if present)
+let packRates=JSON.parse(localStorage.getItem('ba_packRates_v25')||'null');
+let courierRates=JSON.parse(localStorage.getItem('ba_courierRates_v25')||'null');
+if(!packRates){
+  const old=localStorage.getItem('ba_packRates_v24');
+  packRates= old? JSON.parse(old) : packRatesDefaults;
+  localStorage.setItem('ba_packRates_v25',JSON.stringify(packRates));
+}
+if(!courierRates){
+  const old=localStorage.getItem('ba_courierRates_v24');
+  courierRates= old? JSON.parse(old) : courierDefaults;
+  localStorage.setItem('ba_courierRates_v25',JSON.stringify(courierRates));
+}
+
+/***** Helpers *****/
+function $(q,el=document){return el.querySelector(q)}
+function $all(q,el=document){return Array.from(el.querySelectorAll(q))}
+function tierPrice(tiers,grams){for(const [limit,price] of tiers){if(grams<=limit) return price}return tiers[tiers.length-1][1]}
+
+/***** Letters panel *****/
+function letterRow(){
+  const row=document.createElement('div');row.className='row card';
+  row.innerHTML=`
+    <div><label class="note" data-t="dest"></label>
+      <select class="dest"><option value="canada" data-t="canada"></option><option value="usa" data-t="usa"></option><option value="intl" data-t="intl"></option></select></div>
+    <div><label class="note" data-t="size"></label>
+      <select class="size"><option value="standard" data-t="letterStd"></option><option value="other" data-t="letterOther"></option></select></div>
+    <div><label class="note" data-t="pay"></label>
+      <select class="pay"><option value="single" data-t="single"></option><option value="booklet" data-t="booklet"></option><option value="meter" selected data-t="meter"></option><option value="indicia" data-t="meter"></option><option value="incentive" data-t="incentive"></option></select></div>
+    <div><label class="note" data-t="weight"></label><input type="number" class="weight" min="1" step="1" value="30"></div>
+    <div><label class="note" data-t="qty"></label><input type="number" class="qty" min="1" step="1" value="100"></div>
+    <div><label class="note" data-t="per"></label><div class="k per">$0.00</div></div>
+    <div><label class="note" data-t="rowTotal"></label><div class="k rowTotal">$0.00</div>
+      <div style="margin-top:6px"><button class="btn danger" data-t="remove"></button></div></div>`;
+  row.addEventListener('input',computeLetters);row.addEventListener('change',computeLetters);
+  $('#rows-letters').appendChild(row);applyLang();computeLetters();
+}
+function computeLetters(){
+  let sum=0; $all('#rows-letters .row').forEach(row=>{
+    const dest=$('.dest',row).value, size=$('.size',row).value, pay=$('.pay',row).value;
+    const w=Number($('.weight',row).value)||0, q=Number($('.qty',row).value)||0; let per=NaN;
+    if(dest==='canada'){
+      if(size==='standard') per=(w<=30?letterRates.canada.standard[pay]?.up30:(w<=50?letterRates.canada.standard[pay]?.up50:NaN));
+      else if(pay==='incentive'){ per=(w<=100?letterRates.canada.other.incentive.up100: +(letterRates.canada.other.incentive.up100 + (w-100)*letterRates.canada.other.incentive.over100PerG).toFixed(4)); }
+      else{ if(w<=100) per=letterRates.canada.other[pay]?.up100; else if(w<=200) per=letterRates.canada.other[pay]?.up200; else if(w<=300) per=letterRates.canada.other[pay]?.up300; else if(w<=400) per=letterRates.canada.other[pay]?.up400; else if(w<=500) per=letterRates.canada.other[pay]?.up500; }
+    } else if(dest==='usa'){
+      const key=(pay==='meter'||pay==='indicia')?'meter':'stamp';
+      if(size==='standard') per=(w<=30?letterRates.usa.standard[key].up30:(w<=50?letterRates.usa.standard[key].up50:NaN));
+      else per=(w<=100?letterRates.usa.other[key].up100:(w<=200?letterRates.usa.other[key].up200:(w<=500?letterRates.usa.other[key].up500:NaN)));
+    } else {
+      const key=(pay==='meter'||pay==='indicia')?'meter':'stamp';
+      if(size==='standard') per=(w<=30?letterRates.intl.standard[key].up30:(w<=50?letterRates.intl.standard[key].up50:NaN));
+      else per=(w<=100?letterRates.intl.other[key].up100:(w<=200?letterRates.intl.other[key].up200:(w<=500?letterRates.intl.other[key].up500:NaN)));
+    }
+    const rowTot=(isFinite(per)?per*q:0); sum+=rowTot; $('.per',row).textContent=isFinite(per)?money(per):'—'; $('.rowTotal',row).textContent=money(rowTot);
+  }); $('#grand-letters').textContent=money(sum);
+}
+
+/***** Packages panel (with courier comparison) *****/
+function packRow(){
+  const row=document.createElement('div');row.className='row card';
+  row.innerHTML=`
+    <div><label class="note" data-t="dest"></label>
+      <select class="dest"><option value="canada" data-t="canada"></option><option value="usa" data-t="usa"></option><option value="intl" data-t="intl"></option></select></div>
+    <div><label class="note" data-t="mailtype"></label>
+      <select class="ptype"><option value="spUSA" data-t="packSPUSA"></option><option value="tpUSA" data-t="packTPUSA"></option><option value="spINTL" data-t="packSPINTL"></option><option value="tpINTL" data-t="packTPINTL"></option><option value="expd" data-t="packEXPD"></option></select></div>
+    <div><label class="note" data-t="pkgSize"></label>
+      <select class="psize"><option value="letter" data-t="pkgLetter"></option><option value="small" data-t="pkgSmall"></option><option value="medium" data-t="pkgMedium"></option><option value="large" data-t="pkgLarge"></option></select></div>
+    <div><label class="note" data-t="zone"></label>
+      <select class="zone"><option value="local" data-t="local"></option><option value="regional" data-t="regional"></option><option value="national" data-t="national"></option></select></div>
+    <div><label class="note" data-t="weight"></label><input type="number" class="weight" min="1" step="1" value="500"></div>
+    <div><label class="note" data-t="qty"></label><input type="number" class="qty" min="1" step="1" value="10"></div>
+    <div><label class="note" data-t="per"></label><div class="k per">$0.00</div>
+      <div class="cmp">
+        <label style="margin-right:6px"><input type="checkbox" class="cmpUPS"> <span data-t="cmpUPS">UPS</span></label>
+        <label><input type="checkbox" class="cmpPuro"> <span data-t="cmpPuro">Purolator</span></label>
+        <div class="up upsLine" style="display:none"></div>
+        <div class="up puroLine" style="display:none"></div>
+      </div>
+      <div style="margin-top:6px"><button class="btn danger" data-t="remove"></button></div>
+    </div>`;
+  row.addEventListener('input',computePacks);row.addEventListener('change',computePacks);
+  $('#rows-pack').appendChild(row);applyLang();computePacks();
+}
+function computeCPParcel(dest,type,size,zone,grams){
+  let per=0;
+  if(type==='expd'){
+    const cap=size==='letter'?500:(size==='small'?1000:(size==='medium'?5000:30000)); const g=Math.min(grams,cap);
+    const tbl= zone==='local'?packRates.expdLocal.tiers : (zone==='regional'?packRates.expdRegional.tiers:packRates.expdNational.tiers);
+    per=tierPrice(tbl,g);
+  } else if(type==='spUSA'||type==='tpUSA'){
+    if(dest!=='usa') per=0; else per=tierPrice((type==='spUSA'?packRates.spUSA.tiers:packRates.tpUSA.tiers),grams);
+  } else if(type==='spINTL'||type==='tpINTL'){
+    if(dest!=='intl') per=0; else per=tierPrice((type==='spINTL'?packRates.spINTL.tiers:packRates.tpINTL.tiers),grams);
+  }
+  return per;
+}
+function computeCourier(dest,carrier,zone,grams){
+  const C=courierRates[carrier]; if(!C) return 0;
+  if(dest==='canada'){
+    const tbl=(zone==='local'?C.domestic.local:(zone==='regional'?C.domestic.regional:C.domestic.national));
+    return tierPrice(tbl,grams);
+  } else if(dest==='usa'){
+    return tierPrice(C.usa.tiers,grams);
+  } else { return tierPrice(C.intl.tiers,grams); }
+}
+function computePacks(){
+  let sum=0; $all('#rows-pack .row').forEach(row=>{
+    const dest=$('.dest',row).value, type=$('.ptype',row).value, size=$('.psize',row).value, zone=$('.zone',row).value;
+    const w=Number($('.weight',row).value)||0, q=Number($('.qty',row).value)||0;
+    const cpPer=computeCPParcel(dest,type,size,zone,w);
+    const upsOn=$('.cmpUPS',row).checked, puroOn=$('.cmpPuro',row).checked; let ups=0, puro=0;
+    if(upsOn) ups=computeCourier(dest,'ups',zone,w); if(puroOn) puro=computeCourier(dest,'purolator',zone,w);
+    const rowTot=cpPer*q; sum+=rowTot; $('.per',row).textContent=cpPer?money(cpPer):'—';
+    const upsLine=$('.upsLine',row), puroLine=$('.puroLine',row);
+    if(upsOn){ const diff=cpPer? (ups-cpPer):0; upsLine.style.display='block'; upsLine.textContent=`UPS: ${money(ups)}  •  ${T[lang()].cmpSavings}: ${(diff>0?'-':'')}${money(Math.abs(diff))}`; upsLine.className='up upsLine '+(diff>0?'':'save'); } else { upsLine.style.display='none'; }
+    if(puroOn){ const diff=cpPer? (puro-cpPer):0; puroLine.style.display='block'; puroLine.textContent=`Purolator: ${money(puro)}  •  ${T[lang()].cmpSavings}: ${(diff>0?'-':'')}${money(Math.abs(diff))}`; puroLine.className='up puroLine '+(diff>0?'':'save'); } else { puroLine.style.display='none'; }
+  }); $('#grand-pack').textContent=money(sum);
+}
+
+/***** Neighbourhood Mail panel *****/
+function nmRow(){
+  const row=document.createElement('div');row.className='row card';
+  row.innerHTML=`
+    <div><label class="note">Type</label>
+      <select class="nmtype"><option value="standard">Standard</option><option value="oversize">Oversize</option></select>
+      <div class="note" data-t="nmNote" style="margin-top:6px"></div>
+    </div>
+    <div><label class="note" data-t="weight"></label><input type="number" class="nmw" min="1" step="1" value="15"></div>
+    <div><label class="note" data-t="qty"></label><input type="number" class="qty" min="1000" step="1" value="2000"></div>
+    <div></div><div></div>
+    <div><label class="note" data-t="per"></label><div class="k per">$0.00</div></div>
+    <div><label class="note" data-t="rowTotal"></label><div class="k rowTotal">$0.00</div>
+      <div style="margin-top:6px"><button class="btn danger" data-t="remove"></button></div></div>`;
+  row.addEventListener('input',computeNM);row.addEventListener('change',computeNM);
+  $('#rows-nm').appendChild(row);applyLang();computeNM();
+}
+function computeNM(){
+  let sum=0; $all('#rows-nm .row').forEach(row=>{
+    const t=$('.nmtype',row).value; const w=Number($('.nmw',row).value)||0; const q=Number($('.qty',row).value)||0;
+    const tbl=nmRates[t]; let per=0; if(w<=50) per=tbl.up50; else if(w<=100) per=tbl.up100; else per=tbl.over100Base+(w-100)*tbl.perGOver100; per+=tbl.transport;
+    const rowTot=per*q; sum+=rowTot; $('.per',row).textContent=money(per); $('.rowTotal',row).textContent=money(rowTot);
+  }); $('#grand-nm').textContent=money(sum);
+}
+
+/***** Settings editors *****/
+function renderPackRatesEditor(){
+  const host=$('#packRatesEditor'); host.innerHTML='';
+  const entries=[["spUSA","Small Packet \u2013 USA (Air)"],["tpUSA","Tracked Packet \u2013 USA"],["spINTL","Small Packet \u2013 INTL (Air)"],["tpINTL","Tracked Packet \u2013 INTL"],["expdLocal","Expedited Parcel Local"],["expdRegional","Expedited Parcel Regional"],["expdNational","Expedited Parcel National"]];
+  entries.forEach(([key,label])=>{
+    const card=document.createElement('div'); card.className='card'; card.style.padding='10px';
+    const h=document.createElement('div'); h.innerHTML='<b>'+label+'</b>'; h.style.marginBottom='6px'; card.appendChild(h);
+    const t=packRates[key].tiers; t.forEach((pair,i)=>{
+      const r=document.createElement('div'); r.style.display='grid'; r.style.gridTemplateColumns='1fr 1fr'; r.style.gap='6px'; r.style.margin='4px 0';
+      r.innerHTML=`<input type="number" data-k="${key}" data-i="${i}" data-f="w" min="1" value="${pair[0]}" title="Weight limit (g)"> <input type="number" step="0.01" data-k="${key}" data-i="${i}" data-f="p" value="${pair[1]}">`;
+      card.appendChild(r);
+    }); host.appendChild(card);
+  });
+  host.addEventListener('input',e=>{const el=e.target; const k=el.dataset.k; if(!k) return; const idx=+el.dataset.i; const f=el.dataset.f; const v=Number(el.value); packRates[k].tiers[idx][f==='w'?0:1]=v;});
+}
+function renderCourierRatesEditor(){
+  const host=$('#courierRatesEditor'); host.innerHTML='';
+  const blocks=[["ups","UPS"],["purolator","Purolator"]];
+  blocks.forEach(([key,label])=>{
+    const dom=document.createElement('div'); dom.className='card'; dom.style.padding='10px';
+    dom.appendChild(Object.assign(document.createElement('div'),{innerHTML:'<b>'+label+' — Domestic</b>',style:'margin-bottom:6px'}));
+    ['local','regional','national'].forEach(zone=>{
+      const z=document.createElement('div'); z.innerHTML=`<div style="font-weight:600;margin:6px 0">${zone.toUpperCase()}</div>`; dom.appendChild(z);
+      courierRates[key].domestic[zone].forEach((pair,i)=>{
+        const r=document.createElement('div'); r.style.display='grid'; r.style.gridTemplate-columns='1fr 1fr'; r.style.gap='6px'; r.style.margin='4px 0';
+      });
+    });
+  });
+}
+</script>
+<script>
+/* continue renderCourierRatesEditor (fixed JS split due to long tag) */
+function renderCourierRatesEditor(){
+  const host=$('#courierRatesEditor'); host.innerHTML='';
+  const blocks=[["ups","UPS"],["purolator","Purolator"]];
+  blocks.forEach(([key,label])=>{
+    const dom=document.createElement('div'); dom.className='card'; dom.style.padding='10px';
+    dom.appendChild(Object.assign(document.createElement('div'),{innerHTML:'<b>'+label+' — Domestic</b>',style:'margin-bottom:6px'}));
+    ['local','regional','national'].forEach(zone=>{
+      const z=document.createElement('div'); z.innerHTML=`<div style="font-weight:600;margin:6px 0">${zone.toUpperCase()}</div>`; dom.appendChild(z);
+      courierRates[key].domestic[zone].forEach((pair,i)=>{
+        const r=document.createElement('div'); r.style.display='grid'; r.style.gridTemplateColumns='1fr 1fr'; r.style.gap='6px'; r.style.margin='4px 0';
+        r.innerHTML=`<input type="number" data-k="${key}" data-s="domestic" data-z="${zone}" data-i="${i}" data-f="w" min="1" value="${pair[0]}"> <input type="number" step="0.01" data-k="${key}" data-s="domestic" data-z="${zone}" data-i="${i}" data-f="p" value="${pair[1]}">`;
+        dom.appendChild(r);
+      });
+    }); host.appendChild(dom);
+
+    const usa=document.createElement('div'); usa.className='card'; usa.style.padding='10px';
+    usa.appendChild(Object.assign(document.createElement('div'),{innerHTML:'<b>'+label+' — USA</b>',style:'margin-bottom:6px'}));
+    courierRates[key].usa.tiers.forEach((pair,i)=>{
+      const r=document.createElement('div'); r.style.display='grid'; r.style.gridTemplateColumns='1fr 1fr'; r.style.gap='6px'; r.style.margin='4px 0';
+      r.innerHTML=`<input type="number" data-k="${key}" data-s="usa" data-i="${i}" data-f="w" min="1" value="${pair[0]}"> <input type="number" step="0.01" data-k="${key}" data-s="usa" data-i="${i}" data-f="p" value="${pair[1]}">`;
+      usa.appendChild(r);
+    }); host.appendChild(usa);
+
+    const intl=document.createElement('div'); intl.className='card'; intl.style.padding='10px';
+    intl.appendChild(Object.assign(document.createElement('div'),{innerHTML:'<b>'+label+' — International</b>',style:'margin-bottom:6px'}));
+    courierRates[key].intl.tiers.forEach((pair,i)=>{
+      const r=document.createElement('div'); r.style.display='grid'; r.style.gridTemplateColumns='1fr 1fr'; r.style.gap='6px'; r.style.margin='4px 0';
+      r.innerHTML=`<input type="number" data-k="${key}" data-s="intl" data-i="${i}" data-f="w" min="1" value="${pair[0]}"> <input type="number" step="0.01" data-k="${key}" data-s="intl" data-i="${i}" data-f="p" value="${pair[1]}">`;
+      intl.appendChild(r);
+    }); host.appendChild(intl);
+  });
+  host.addEventListener('input',e=>{
+    const el=e.target; const k=el.dataset.k; if(!k) return; const sect=el.dataset.s; const idx=+el.dataset.i; const f=el.dataset.f; const v=Number(el.value);
+    if(sect==='domestic'){ const z=el.dataset.z; courierRates[k].domestic[z][idx][f==='w'?0:1]=v; }
+    else { courierRates[k][sect].tiers[idx][f==='w'?0:1]=v; }
+  });
+}
+function saveAllEdits(){ localStorage.setItem('ba_packRates_v25',JSON.stringify(packRates)); localStorage.setItem('ba_courierRates_v25',JSON.stringify(courierRates)); alert('Saved.'); }
+function loadDefaultsAll(){ packRates=JSON.parse(JSON.stringify(packRatesDefaults)); courierRates=JSON.parse(JSON.stringify(courierDefaults)); renderPackRatesEditor(); renderCourierRatesEditor(); alert('Defaults restored (not saved yet).'); }
+
+/***** CSV export *****/
+function exportCSV(){
+  const rows=[["panel","destination","type","size","zone","weight_g","qty","canada_post_cad","ups_cad","purolator_cad","difference_vs_cp"]];
+  $all('#rows-letters .row').forEach(row=>{ rows.push(['letters',$('.dest',row).value,$('.size',row).value,$('.pay',row).value,'',Number($('.weight',row).value)||0,Number($('.qty',row).value)||0,$('.per',row).textContent,'','','']); });
+  $all('#rows-pack .row').forEach(row=>{
+    const cp=$('.per',row).textContent; const upsEl=$('.upsLine',row); const puroEl=$('.puroLine',row);
+    const ups=upsEl.style.display==='none'?'':upsEl.textContent.split('•')[0].split(':')[1].trim();
+    const puro=puroEl.style.display==='none'?'':puroEl.textContent.split('•')[0].split(':')[1].trim();
+    const diffTxt=(upsEl.style.display!=='none')?upsEl.textContent.split('•')[1].trim() : ((puroEl.style.display!=='none')?puroEl.textContent.split('•')[1].trim() : '');
+    rows.push(['packages',$('.dest',row).value,$('.ptype',row).value,$('.psize',row).value,$('.zone',row).value,Number($('.weight',row).value)||0,Number($('.qty',row).value)||0,cp,ups,puro,diffTxt]);
+  });
+  $all('#rows-nm .row').forEach(row=>{rows.push(['neighbourhood','canada',$('.nmtype',row).value,'','',Number($('.nmw',row).value)||0,Number($('.qty',row).value)||0,$('.per',row).textContent,'','','']);});
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='mailing_estimate_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+}
+
+/***** Rates JSON save/load *****/
+function saveRatesJSON(){ const blob=new Blob([JSON.stringify({packRates,courierRates},null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='rates_v25.json'; a.click(); }
+document.addEventListener('change',e=>{
+  if(e.target && e.target.id==='importRates'){
+    const f=e.target.files[0]; if(!f) return; const rd=new FileReader();
+    rd.onload=()=>{ try{ const obj=JSON.parse(rd.result);
+      if(obj && obj.packRates && obj.courierRates){
+        packRates=obj.packRates; courierRates=obj.courierRates;
+        localStorage.setItem('ba_packRates_v25',JSON.stringify(packRates));
+        localStorage.setItem('ba_courierRates_v25',JSON.stringify(courierRates));
+        renderPackRatesEditor(); renderCourierRatesEditor(); alert('Rates loaded.');
+      }
+    }catch(err){ alert('Invalid JSON.'); } };
+    rd.readAsText(f);
+  }
+});
+
+/***** Tabs *****/
+$('#tab-letters').onclick=()=>{ toggleTabs('letters') };
+$('#tab-packages').onclick=()=>{ toggleTabs('packages') };
+$('#tab-nm').onclick=()=>{ toggleTabs('nm') };
+function toggleTabs(which){
+  $('#tab-letters').classList.toggle('active',which==='letters');
+  $('#tab-packages').classList.toggle('active',which==='packages');
+  $('#tab-nm').classList.toggle('active',which==='nm');
+  $('#panel-letters').style.display=(which==='letters')?'':'none';
+  $('#panel-packages').style.display=(which==='packages')?'':'none';
+  $('#panel-nm').style.display=(which==='nm')?'':'none';
+}
+
+/***** Language *****/
+function lang(){ return document.body.dataset.lang||'en'; }
+function applyLang(){ const L=lang(); $all('[data-t]').forEach(el=>{ const key=el.getAttribute('data-t'); if(T[L] && T[L][key]!==undefined){ el.innerHTML=T[L][key]; } }); $('#lang-en').classList.toggle('active',L==='en'); $('#lang-fr').classList.toggle('active',L==='fr'); }
+$('#lang-en').onclick=()=>{ document.body.dataset.lang='en'; applyLang(); };
+$('#lang-fr').onclick=()=>{ document.body.dataset.lang='fr'; applyLang(); };
+
+/***** Dialog controls *****/
+function openAbout(){ $('#about').showModal(); }
+function closeAbout(){ $('#about').close(); }
+function openReadme(){ $('#readme').showModal(); }
+function closeReadme(){ $('#readme').close(); }
+function openWhatsNew(){ $('#whatsnew').showModal(); }
+function closeWhatsNew(){ $('#whatsnew').close(); }
+function openSettings(){ renderPackRatesEditor(); renderCourierRatesEditor(); $('#settings').showModal(); }
+function closeSettings(){ $('#settings').close(); }
+
+/***** Bootstrap *****/
+function resetLetters(){ $('#rows-letters').innerHTML=''; letterRow(); }
+function resetPack(){ $('#rows-pack').innerHTML=''; packRow(); }
+function resetNM(){ $('#rows-nm').innerHTML=''; nmRow(); }
+$('#addRowLetter').onclick=letterRow; $('#resetLetters').onclick=resetLetters; $('#addRowPack').onclick=packRow; $('#resetPack').onclick=resetPack; $('#addRowNM').onclick=nmRow; $('#resetNM').onclick=resetNM;
+resetLetters(); resetPack(); resetNM(); applyLang();
+
+/***** PWA bootstrap (inline manifest + SW) *****/
+(function(){
+  // tiny 1x1 PNG for both sizes to keep file small (you can replace later with real icons)
+  const tiny='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO3+2ZkAAAAASUVORK5CYII=';
+  const icons=[{sz:192,png:tiny},{sz:512,png:tiny}];
+  const manifest={name:'Boater-Aid Mailing Calculator',short_name:'BA Mail Calc',start_url:'./',display:'standalone',background_color:'#0a2745',theme_color:'#0a2745',icons:icons.map(i=>({src:`data:image/png;base64,${i.png}`,sizes:`${i.sz}x${i.sz}`,type:'image/png'}))};
+  const manBlob=new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'}); const manURL=URL.createObjectURL(manBlob);
+  const link=document.createElement('link'); link.rel='manifest'; link.href=manURL; document.head.appendChild(link);
+  const sw=`
+    const CACHE='ba-mailcalc-v25';
+    self.addEventListener('install',e=>{self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./'])) )});
+    self.addEventListener('activate',e=>{e.waitUntil((async()=>{const keys=await caches.keys(); await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))); self.clients.claim();})())});
+    self.addEventListener('fetch',e=>{
+      e.respondWith((async()=>{
+        const r=await caches.match(e.request); if(r) return r;
+        const res=await fetch(e.request); const copy=res.clone();
+        const c=await caches.open(CACHE); c.put(e.request,copy); return res;
+      })());
+    });
+  `;
+  const swURL=URL.createObjectURL(new Blob([sw],{type:'text/javascript'}));
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register(swURL).catch(console.warn); }
+})();
+</script>
+</dialog>
+</body>
+</html>
