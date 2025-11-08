@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CPC Calc — v3.4 (Zero-Start + Auto-Run)</title>
+<meta name="theme-color" content="#e8f3ff"/>
+<style>
+  :root{
+    --bg:#e8f3ff; --fg:#0f172a; --muted:#475569; --card:#ffffff;
+    --accent:#2563eb; --accent-2:#1d4ed8; --ok:#16a34a; --warn:#ca8a04; --err:#dc2626;
+    --ring: 0 0 0 3px rgba(37,99,235,.25);
+    --notice-bg:#fef3c7; --notice-border:#f59e0b; --notice-text:#78350f;
+    --brand:#0ea5e9;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0; font:14px/1.45 system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--fg); background:var(--bg)}
+  header{display:grid; place-items:center; padding:18px 10px 6px}
+  .title{display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:center}
+  .logo{width:44px; height:44px; border-radius:12px; display:grid; place-items:center; background:#fff; box-shadow:0 4px 14px rgba(0,0,0,.08); user-select:none; font-weight:900}
+  .logo span{font-size:12px; letter-spacing:.8px; color:var(--brand); text-transform:uppercase}
+  h1{margin:0; font-size:20px}
+  .caption{font-size:12px; color:var(--muted); margin-top:4px}
+  .chip{font-size:12px; background:rgba(14,165,233,.12); color:#0369a1; border:1px solid rgba(14,165,233,.35); padding:4px 8px; border-radius:999px}
+
+  .install-banner{display:none; gap:10px; align-items:center; justify-content:center; background:#fff; border:1px solid #dbe4f0; border-radius:12px; padding:10px 12px; margin:8px auto 0; max-width:640px; box-shadow:0 10px 24px rgba(2,6,23,.06)}
+  .install-banner b{font-size:13px}
+  .install-banner button{border:0; padding:8px 12px; border-radius:10px; font-weight:700; background:var(--accent); color:#fff; cursor:pointer}
+  .install-banner .ghost{background:#f1f5f9; color:#0f172a}
+
+  .wrap{max-width:1200px; margin:16px auto 64px; padding:0 12px}
+  .grid{display:grid; grid-template-columns:1.1fr .9fr; gap:14px}
+  @media (max-width:1000px){ .grid{grid-template-columns:1fr } }
+
+  .card{background:var(--card); border-radius:16px; padding:16px; box-shadow:0 12px 34px rgba(30,41,59,.08), 0 2px 6px rgba(2,6,23,.06); border:1px solid rgba(2,6,23,.06)}
+  .card h2{margin:0 0 8px; font-size:16px}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
+  label{font-size:12px; color:var(--muted); display:block; margin-bottom:4px}
+  input[type="number"], select, textarea{width:100%; padding:10px 12px; border-radius:12px; border:1px solid #dbe4f0; outline:none; background:#fff; color:var(--fg)}
+  input:focus, select:focus, textarea:focus{box-shadow:var(--ring); border-color:var(--accent)}
+  textarea{min-height:160px; resize:vertical}
+  .note{font-size:12px; color:var(--muted); margin-top:4px}
+  .checkline{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .checkline label{margin:0 12px 0 0; display:flex; align-items:center; gap:6px}
+  .btns{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
+  button{border:0; padding:10px 14px; border-radius:12px; font-weight:600; cursor:pointer; background:var(--accent); color:#fff}
+  button:hover{background:var(--accent-2)}
+  .ghost{background:#eef2ff; color:#3730a3}
+  .subtle{background:#f1f5f9; color:#0f172a}
+  .danger{background:var(--err)}
+  .ok{background:var(--ok)}
+  .warn{background:var(--warn)}
+  .small{font-size:12px; color:var(--muted)}
+  .result{background:#0b1220; color:#e2e8f0; border-radius:14px; padding:14px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; min-height:160px; border:1px solid rgba(255,255,255,.08)}
+  .sum{font-size:28px; font-weight:800; letter-spacing:.2px}
+  .bar{height:1px; background:linear-gradient(90deg,#dbeafe,transparent); margin:10px 0 12px}
+  details summary{cursor:pointer; user-select:none; font-weight:700}
+  details{border:1px dashed #cbd5e1; border-radius:12px; padding:10px 12px; background:#fafcff}
+  footer{text-align:center; color:var(--muted); font-size:12px; padding:22px 10px 28px}
+  .tag{font-size:11px; padding:2px 8px; border-radius:999px; background:#ecfeff; color:#155e75; border:1px solid #a5f3fc}
+
+  .notice{
+    display:block; background:var(--notice-bg); color:var(--notice-text);
+    border:1px solid var(--notice-border); border-radius:10px;
+    padding:10px 12px; margin:0 0 12px 0;
+  }
+  .closeReadmeBtn{
+    display:inline-block; margin-top:12px; background:#eef2ff; color:#0f172a;
+    border-radius:12px; padding:8px 14px; font-weight:600; border:none; cursor:pointer;
+  }
+  .blue{color:var(--brand)}
+</style>
+</head>
+<body>
+<header>
+  <div class="title">
+    <div class="logo" aria-hidden="true" title="CPC Calc"><span>CPC<br/>Calc</span></div>
+    <div style="text-align:center">
+      <h1>CPC Calc — Mail Cost Calculator</h1>
+      <div class="caption">Canada Post • UPS • Purolator — Bilingual • Offline • JSON-configurable rates</div>
+    </div>
+    <span class="chip" id="verChip">v3.4 (Zero-Start + Auto-Run)</span>
+  </div>
+
+  <div id="installBanner" class="install-banner" role="region" aria-label="PWA Install">
+    <b>Install CPC Calc?</b>
+    <button id="installBtn">Install</button>
+    <button id="dismissBtn" class="ghost">Not now</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+
+    <!-- LEFT: Inputs -->
+    <section class="card left">
+      <h2>Inputs</h2>
+
+      <div class="row3">
+        <div>
+          <label for="weight">Actual Weight (grams)</label>
+          <input id="weight" type="number" inputmode="decimal" min="0" step="0.1" value="0" />
+        </div>
+        <div>
+          <label for="qty">Quantity</label>
+          <input id="qty" type="number" inputmode="numeric" min="1" step="1" value="1" />
+        </div>
+        <div>
+          <label for="declared">Declared Value (for insurance)</label>
+          <input id="declared" type="number" inputmode="decimal" min="0" step="0.01" value="0" />
+        </div>
+      </div>
+
+      <div>
+        <label><b>Package Dimensions (cm)</b></label>
+        <div class="note">Optional — used for dimensional weight if package is large but light.</div>
+      </div>
+      <div class="row3" style="margin-top:6px">
+        <div>
+          <label for="len">Length (cm)</label>
+          <input id="len" type="number" inputmode="decimal" min="0" step="0.1" value="0" />
+        </div>
+        <div>
+          <label for="wid">Width (cm)</label>
+          <input id="wid" type="number" inputmode="decimal" min="0" step="0.1" value="0" />
+        </div>
+        <div>
+          <label for="hei">Height (cm)</label>
+          <input id="hei" type="number" inputmode="decimal" min="0" step="0.1" value="0" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="mailType">Mail Type</label>
+          <select id="mailType">
+            <option value="letter">Letter</option>
+            <option value="oversize">Oversize</option>
+            <option value="parcel" selected>Parcel</option>
+          </select>
+        </div>
+        <div>
+          <label for="zone">Destination</label>
+          <select id="zone">
+            <option value="domestic" selected>Domestic</option>
+            <option value="usa">USA</option>
+            <option value="intl">International</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="courier">Courier</label>
+          <select id="courier">
+            <option value="canadaPost" selected>Canada Post</option>
+            <option value="ups">UPS</option>
+            <option value="purolator">Purolator</option>
+            <option value="compare">Compare All</option>
+          </select>
+        </div>
+        <div>
+          <label for="serviceLevel">Service Level</label>
+          <select id="serviceLevel">
+            <option value="ground" selected>Ground</option>
+            <option value="express">Express</option>
+            <option value="air">Air</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="checkline">
+        <label><input type="checkbox" id="tracking"> Tracking</label>
+        <label><input type="checkbox" id="registered"> Registered</label>
+        <label><input type="checkbox" id="signature"> Signature</label>
+        <label><input type="checkbox" id="insurance"> Insurance</label>
+        <label><input type="checkbox" id="applyTax"> Apply Tax</label>
+        <label><input type="checkbox" id="residential"> Residential Delivery Address</label>
+      </div>
+
+      <div class="btns">
+        <button id="calcBtn" title="Calculate total">Calculate</button>
+        <button class="subtle" id="resetBtn" title="Reset inputs">Reset</button>
+        <button class="ghost" id="readmeBtn" title="Open README / Aide">README / Aide</button>
+      </div>
+
+      <div class="bar"></div>
+
+      <h2 style="margin-top:0">Rates (JSON)</h2>
+      <details id="ratesPanel">
+        <summary>Show / Hide editable JSON rates (Save & Restore supported)</summary>
+        <p class="small">
+          Edit the rates below and click <b>Save (browser)</b>, or <b>Export .json</b> to download.  
+          Use <b>Import .json</b> to load a saved file.
+        </p>
+        <textarea id="ratesJson" class="mono" spellcheck="false"></textarea>
+        <div class="btns">
+          <button class="ok" id="saveLocalBtn">Save (browser)</button>
+          <button class="subtle" id="loadLocalBtn">Restore (browser)</button>
+          <button class="warn" id="exportBtn">Export .json</button>
+          <label class="ghost" style="display:inline-flex; align-items:center; gap:8px; padding-right:12px; cursor:pointer;">
+            <input id="importFile" type="file" accept=".json,application/json" style="display:none">
+            <span>Import .json</span>
+          </label>
+          <button class="danger" id="resetDefaultBtn">Reset to Defaults</button>
+        </div>
+      </details>
+      <div class="small" style="margin-top:8px">
+        <span class="tag">Note</span> Calculations use whatever is in the JSON box.
+      </div>
+    </section>
+
+    <!-- RIGHT: Output -->
+    <section class="card right">
+      <div class="notice">
+        ⚠️ <b>Estimated rates only</b> — actual courier costs may vary by region, service level, and account agreements.
+      </div>
+
+      <h2>Result</h2>
+      <div id="sum" class="sum">$0.00</div>
+      <div class="small">Per-item cost shown below; multiplied by quantity for total.</div>
+      <div class="result" id="breakdown" aria-live="polite"></div>
+
+      <div class="btns">
+        <button id="copyBtn" class="ghost">Copy Quote</button>
+        <button id="exportQuoteBtn" class="subtle">Export Quote (.txt)</button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- README -->
+  <section class="card" style="margin-top:14px">
+    <h2>README / Aide (EN/FR)</h2>
+    <details id="readme">
+      <summary>Open README</summary>
+      <div style="margin-top:10px">
+        <h3>English</h3>
+        <ul>
+          <li><b>Zero start:</b> All numeric fields start at 0 (Qty=1). Calculator runs automatically once weight or dimensions are non-zero.</li>
+          <li><b>Dimensions (optional):</b> Enter L × W × H (cm). Uses the higher of actual vs dimensional weight.</li>
+          <li><b>Compare All:</b> Shows three breakdowns (CP / UPS / Purolator).</li>
+          <li><b>Export:</b> Includes version header and disclaimer.</li>
+        </ul>
+        <p class="notice" style="margin-top:12px">
+          ⚠️ <b>Estimated rates only</b> — actual courier costs may vary by region, service level, and account agreements.
+        </p>
+
+        <h4 style="margin-top:18px">Install on Phone</h4>
+        <ul>
+          <li><b>Android</b>: ⋮ menu → <i>Add to Home screen</i> → <i>Install</i>.</li>
+          <li><b>iPhone/iPad</b>: <i>Share</i> → <i>Add to Home Screen</i> → <i>Add</i>.</li>
+        </ul>
+
+        <hr/>
+        <h3>Français</h3>
+        <ul>
+          <li><b>Démarrage à zéro :</b> Tous les champs numériques commencent à 0 (Qté=1). Le calcul s’exécute automatiquement dès que le poids ou les dimensions sont non nuls.</li>
+          <li><b>Dimensions (optionnel) :</b> Entrez L × l × H (cm). Utilise le plus élevé entre poids réel et volumétrique.</li>
+          <li><b>Comparer :</b> Affiche les trois détails (Postes Canada / UPS / Purolator).</li>
+          <li><b>Export :</b> Inclut l’en-tête de version et l’avertissement.</li>
+        </ul>
+        <p class="notice" style="margin-top:12px">
+          ⚠️ <b>Estimation seulement</b> — les coûts réels peuvent varier selon la région, le niveau de service et les ententes de compte.
+        </p>
+
+        <div style="text-align:center; margin-top:10px">
+          <div class="blue" style="font-weight:600; margin-bottom:8px">
+            © 2025 Glen Carruthers — CPC Calc • All rights reserved<br/>
+            © 2025 Glen Carruthers — CPC Calc • Tous droits réservés
+          </div>
+          <button id="readmeCloseBtn" class="closeReadmeBtn">Close / Fermer</button>
+        </div>
+      </div>
+    </details>
+  </section>
+</div>
+
+<footer>
+  CPC Calc • <b>v3.4 (Zero-Start + Auto-Run)</b> • Fully offline & self-contained
+  <div class="blue" style="margin-top:6px">© 2025 Glen Carruthers — CPC Calc • All rights reserved</div>
+</footer>
+
+<script>
+/* ===================================================
+   v3.4 — Zero-Start + Auto-Run (CP +1% retained, grid scaffold retained)
+   =================================================== */
+const VERSION = "v3.4 (Zero-Start + Auto-Run)";
+document.getElementById("verChip").textContent = VERSION;
+
+/* ---- v4.0 scaffold placeholders (unchanged) ---- */
+const MODE_CP = "simple"; // "simple" | "grid" (future)
+const CP_GRID = {
+  effectiveDate: "2025-06-26",
+  zones: ["Local","Regional","National"],
+  weights_g: [0,100,200,500,1000,2000,5000,10000],
+  rates: {
+    Local:    [1.08, 1.96, 10.71, 13.08, 16.11, 19.14, 24.19, 29.19],
+    Regional: [1.08, 1.96, 11.36, 14.09, 17.12, 20.45, 25.76, 30.90],
+    National: [1.08, 1.96, 12.88, 16.11, 19.44, 23.48, 29.24, 34.50]
+  }
+};
+/* ----------------------------------------------- */
+
+const els = {
+  weight:    document.getElementById('weight'),
+  qty:       document.getElementById('qty'),
+  declared:  document.getElementById('declared'),
+  len:       document.getElementById('len'),
+  wid:       document.getElementById('wid'),
+  hei:       document.getElementById('hei'),
+  mailType:  document.getElementById('mailType'),
+  zone:      document.getElementById('zone'),
+  courier:   document.getElementById('courier'),
+  serviceLevel: document.getElementById('serviceLevel'),
+  tracking:  document.getElementById('tracking'),
+  registered:document.getElementById('registered'),
+  signature: document.getElementById('signature'),
+  insurance: document.getElementById('insurance'),
+  applyTax:  document.getElementById('applyTax'),
+  residential: document.getElementById('residential'),
+  calcBtn:   document.getElementById('calcBtn'),
+  resetBtn:  document.getElementById('resetBtn'),
+  readmeBtn: document.getElementById('readmeBtn'),
+  readme:    document.getElementById('readme'),
+  sum:       document.getElementById('sum'),
+  breakdown: document.getElementById('breakdown'),
+  copyBtn:   document.getElementById('copyBtn'),
+  exportQuoteBtn: document.getElementById('exportQuoteBtn'),
+  ratesPanel:document.getElementById('ratesPanel'),
+  ratesJson: document.getElementById('ratesJson'),
+  saveLocalBtn: document.getElementById('saveLocalBtn'),
+  loadLocalBtn: document.getElementById('loadLocalBtn'),
+  exportBtn: document.getElementById('exportBtn'),
+  importFile: document.getElementById('importFile'),
+  resetDefaultBtn: document.getElementById('resetDefaultBtn'),
+  installBanner: document.getElementById('installBanner'),
+  installBtn: document.getElementById('installBtn'),
+  dismissBtn: document.getElementById('dismissBtn'),
+};
+
+const LS_KEY = "mailcalc_rates_v3_4";
+
+/* ---------- DEFAULT_RATES: CP +1% (from v3.3) ---------- */
+const DEFAULT_RATES = {
+  couriers: {
+    canadaPost: {
+      zoneMultiplier: { domestic: 1.00, usa: 1.35, intl: 2.10 },
+      levels: { ground: 1.00, express: 1.30, air: 1.55 },
+      volumetricDivisor: 6000,
+      base: {
+        letter:   { threshold_g: 30,  price: 1.0807 },
+        oversize: { threshold_g: 100, price: 1.9594 },
+        parcel:   { threshold_g: 500, price: 10.605 }
+      },
+      perGram: { letter: 0.0303, oversize: 0.0202, parcel: 0.01515 },
+      surcharges: {
+        tracking:   2.50,
+        registered: 9.00,
+        signature:  2.25,
+        residential: 0.00,
+        fuel_pct:   0.00
+      },
+      insurance: { enabled: true, percent: 0.012, minimum: 2.50 },
+      tax: { enabled: true, rate: 0.13 }
+    },
+    ups: {
+      zoneMultiplier: { domestic: 1.00, usa: 1.45, intl: 2.30 },
+      levels: { ground: 1.00, express: 1.40, air: 1.80 },
+      volumetricDivisor: 5000,
+      base: {
+        letter:   { threshold_g: 30,  price: 1.50 },
+        oversize: { threshold_g: 100, price: 3.25 },
+        parcel:   { threshold_g: 500, price: 12.95 }
+      },
+      perGram: { letter: 0.035, oversize: 0.025, parcel: 0.020 },
+      surcharges: {
+        tracking:    0.00,
+        registered:  0.00,
+        signature:   6.70,
+        residential: 4.80,
+        fuel_pct:    0.1575
+      },
+      insurance: { enabled: true, percent: 0.0125, minimum: 3.50 },
+      tax: { enabled: true, rate: 0.13 }
+    },
+    purolator: {
+      zoneMultiplier: { domestic: 1.00, usa: 1.40, intl: 2.20 },
+      levels: { ground: 1.00, express: 1.35, air: 1.65 },
+      volumetricDivisor: 5000,
+      base: {
+        letter:   { threshold_g: 30,  price: 1.40 },
+        oversize: { threshold_g: 100, price: 3.00 },
+        parcel:   { threshold_g: 500, price: 11.95 }
+      },
+      perGram: { letter: 0.033, oversize: 0.023, parcel: 0.018 },
+      surcharges: {
+        tracking:    0.00,
+        registered:  0.00,
+        signature:   8.00,
+        residential: 6.00,
+        fuel_pct:    0.245
+      },
+      insurance: { enabled: true, percent: 0.011, minimum: 3.25 },
+      tax: { enabled: true, rate: 0.13 }
+    }
+  }
+};
+
+/* ---------- Utils ---------- */
+const money = n => "$" + (Math.round(n*100)/100).toFixed(2);
+function saveBlob(text, filename){
+  const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 100);
+}
+function loadRatesFromLocal(){
+  const raw = localStorage.getItem(LS_KEY);
+  if(!raw) return null;
+  try{ return JSON.parse(raw); }catch{ return null; }
+}
+function putRatesToTextarea(obj){ els.ratesJson.value = JSON.stringify(obj, null, 2); }
+function currentRates(){
+  try{ return JSON.parse(els.ratesJson.value); }
+  catch(e){ alert("Rates JSON is invalid. Please fix or Reset to Defaults."); throw e; }
+}
+
+/* ---------- Initialize ---------- */
+function init(){
+  // README close
+  document.getElementById('readmeCloseBtn')?.addEventListener('click', ()=>{
+    els.readme.open = false;
+    setTimeout(()=>{ els.readme.scrollIntoView({behavior:'smooth', block:'center'}); }, 50);
+  });
+
+  const saved = loadRatesFromLocal();
+  putRatesToTextarea(saved || DEFAULT_RATES);
+
+  // Zero-start values (Qty=1)
+  els.weight.value = "0";
+  els.qty.value = "1";
+  els.declared.value = "0";
+  els.len.value = "0";
+  els.wid.value = "0";
+  els.hei.value = "0";
+
+  // Initial display
+  els.sum.textContent = "$0.00";
+  els.breakdown.textContent = "";
+
+  // Auto-run on input changes
+  wireAutoRun();
+}
+document.addEventListener('DOMContentLoaded', init);
+
+/* ---------- Dimensional utils ---------- */
+function computeDimensionalWeightGrams(L, W, H, divisor){
+  if(!divisor || divisor<=0) return 0;
+  const kg = (L*W*H) / divisor;  // kg
+  return Math.ceil(kg * 1000);   // grams
+}
+
+/* ---------- Per-courier calculation ---------- */
+function computeForCourier(courierKey){
+  if (courierKey==="canadaPost" && MODE_CP==="grid"){
+    throw new Error("CP grid mode not enabled yet.");
+  }
+  const all = currentRates();
+  const r = all.couriers[courierKey];
+  if(!r){ throw new Error(`Rates missing for courier: ${courierKey}`); }
+
+  const actualWeightG = Math.max(0, parseFloat(els.weight.value || "0"));
+  const qty      = Math.max(1, parseInt(els.qty.value || "1", 10));
+  const declared = Math.max(0, parseFloat(els.declared.value || "0"));
+  const L = Math.max(0, parseFloat(els.len.value || "0"));
+  const W = Math.max(0, parseFloat(els.wid.value || "0"));
+  const H = Math.max(0, parseFloat(els.hei.value || "0"));
+
+  const type = els.mailType.value; const zone = els.zone.value;
+  const level = els.serviceLevel.value;
+  const tracking = els.tracking.checked, registered = els.registered.checked;
+  const signature = els.signature.checked, insurance = els.insurance.checked;
+  const applyTax = els.applyTax.checked, residential = els.residential.checked;
+
+  // Dimensional vs actual
+  const divisor = r.volumetricDivisor || 5000;
+  const dimWeightG = computeDimensionalWeightGrams(L, W, H, divisor);
+  const billableG = Math.max(actualWeightG, dimWeightG);
+
+  // Guard: nothing to compute if no billable weight
+  if (billableG <= 0) {
+    return { courierKey, label: courierKey==="canadaPost"?"Canada Post":(courierKey==="ups"?"UPS":"Purolator"),
+             perItem: 0, grand: 0,
+             lines: ["Enter a non-zero weight or dimensions to calculate."] };
+  }
+
+  const threshold = r.base[type].threshold_g;
+  const basePrice = r.base[type].price;
+  const extraG = Math.max(0, billableG - threshold);
+  const perGram = r.perGram[type] || 0;
+
+  let transport = basePrice + (extraG * perGram);
+  const zm = r.zoneMultiplier[zone] ?? 1;
+  const lm = (r.levels?.[level] ?? 1);
+  transport *= zm * lm;
+
+  let surFlat = 0;
+  if(tracking)   surFlat += r.surcharges.tracking || 0;
+  if(registered) surFlat += r.surcharges.registered || 0;
+  if(signature)  surFlat += r.surcharges.signature || 0;
+  if(residential && typeof r.surcharges.residential === "number"){
+    surFlat += r.surcharges.residential;
+  }
+
+  let fuel = 0;
+  if(typeof r.surcharges.fuel_pct === "number"){
+    fuel = transport * r.surcharges.fuel_pct;
+  }
+
+  let ins = 0;
+  if(insurance && r.insurance?.enabled && declared>0){
+    ins = Math.max(r.insurance.minimum||0, declared * (r.insurance.percent||0));
+  }
+
+  const subtotal = transport + surFlat + fuel + ins;
+  let tax = 0;
+  if(applyTax && r.tax?.enabled){
+    tax = subtotal * (r.tax.rate || 0);
+  }
+
+  const itemTotal = subtotal + tax;
+  const grand = itemTotal * qty;
+
+  const label = (courierKey==="canadaPost" ? "Canada Post" : courierKey==="ups" ? "UPS" : "Purolator");
+  const lines = [];
+  lines.push(`== ${label} — CPC Calc (${VERSION}) ==`);
+  lines.push(`Type: ${type}  |  Zone: ${zone}  |  Level: ${level}  |  Qty: ${qty}`);
+  lines.push(`Dimensions: ${L} × ${W} × ${H} cm  |  Divisor: ${divisor}`);
+  lines.push(`Weights (g): Actual ${actualWeightG.toFixed(0)} | Dimensional ${dimWeightG.toFixed(0)} | Used ${billableG.toFixed(0)}`);
+  lines.push(`Base ${money(basePrice)} for up to ${threshold} g`);
+  if(extraG>0) lines.push(`+ Extra ${extraG.toFixed(0)} g × ${money(perGram)}/g = ${money(extraG*perGram)}`);
+  if(zm !== 1 || lm !== 1) lines.push(`× Zone ${zm.toFixed(2)} × Level ${lm.toFixed(2)} => ${money(transport)}`);
+
+  const surBits = [];
+  if(tracking && (r.surcharges.tracking||0)>0)     surBits.push(`tracking ${money(r.surcharges.tracking||0)}`);
+  if(registered && (r.surcharges.registered||0)>0) surBits.push(`registered ${money(r.surcharges.registered||0)}`);
+  if(signature && (r.surcharges.signature||0)>0)   surBits.push(`signature ${money(r.surcharges.signature||0)}`);
+  if(residential && typeof r.surcharges.residential === "number") surBits.push(`residential ${money(r.surcharges.residential)}`);
+  if(surBits.length>0) lines.push(`+ Surcharges (flat): ${surBits.join(' + ')} = ${money(surFlat)}`);
+
+  if(fuel>0) lines.push(`+ Fuel surcharge (${((r.surcharges.fuel_pct||0)*100).toFixed(1)}%) = ${money(fuel)}`);
+  if(ins>0)  lines.push(`+ Insurance = ${money(ins)} (declared ${money(declared)})`);
+
+  lines.push(`Subtotal (per item): ${money(subtotal)}`);
+  if(tax>0) lines.push(`+ Tax = ${money(tax)}`);
+  lines.push(`Per item total: ${money(itemTotal)}`);
+  if(qty>1) lines.push(`× Quantity ${qty} => GRAND TOTAL: ${money(grand)}`);
+
+  return { courierKey, label, perItem: itemTotal, grand, lines };
+}
+
+/* ---------- Master update ---------- */
+function updateCalc(){
+  try{
+    const sel = els.courier.value;
+    const weight = parseFloat(els.weight.value || "0");
+    const L = parseFloat(els.len.value || "0");
+    const W = parseFloat(els.wid.value || "0");
+    const H = parseFloat(els.hei.value || "0");
+
+    // If everything zero, keep clean $0.00 display
+    const hasBillable = (weight > 0) || (L>0 && W>0 && H>0);
+    if(!hasBillable){
+      els.sum.textContent = "$0.00";
+      els.breakdown.textContent = "";
+      return;
+    }
+
+    if(sel === "compare"){
+      const a = computeForCourier("canadaPost");
+      const b = computeForCourier("ups");
+      const c = computeForCourier("purolator");
+      const best = [a,b,c].sort((x,y)=>x.perItem - y.perItem)[0];
+      els.sum.textContent = `Best (per item): ${best.label} ${money(best.perItem)}`;
+      els.breakdown.textContent = [a,b,c].map(o => o.lines.join("\n")).join("\n\n");
+    }else{
+      const res = computeForCourier(sel);
+      const q = parseInt(els.qty.value||"1",10);
+      els.sum.textContent = (q>1) ? money(res.grand) : money(res.perItem);
+      els.breakdown.textContent = res.lines.join("\n");
+    }
+  }catch(e){ /* invalid JSON already alerted */ }
+}
+
+/* ---------- Auto-run wiring ---------- */
+function wireAutoRun(){
+  const onInput = () => updateCalc();
+  // Numeric fields: run on 'input' for instant feedback
+  ['weight','qty','declared','len','wid','hei'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', onInput);
+    document.getElementById(id).addEventListener('change', onInput);
+  });
+  // Selects/checkboxes: run on change
+  ['mailType','zone','courier','serviceLevel','tracking','registered','signature','insurance','applyTax','residential']
+    .forEach(id=>document.getElementById(id).addEventListener('change', onInput));
+
+  // Manual button still available
+  els.calcBtn.addEventListener('click', updateCalc);
+}
+
+/* ---------- Buttons: Reset, Copy, Export ---------- */
+els.resetBtn.addEventListener('click', () => {
+  els.weight.value = "0";
+  els.qty.value = "1";
+  els.declared.value = "0";
+  els.len.value = "0";
+  els.wid.value = "0";
+  els.hei.value = "0";
+  els.mailType.value = "parcel";
+  els.zone.value = "domestic";
+  els.courier.value = "canadaPost";
+  els.serviceLevel.value = "ground";
+  ['tracking','registered','signature','insurance','applyTax','residential'].forEach(id=>els[id].checked=false);
+  updateCalc(); // will clear display back to $0.00
+});
+els.copyBtn.addEventListener('click', async () => {
+  try{ await navigator.clipboard.writeText(els.breakdown.textContent || ""); els.copyBtn.textContent="Copied!"; setTimeout(()=>els.copyBtn.textContent="Copy Quote", 900); }
+  catch{ alert("Copy failed. Select the text and copy manually."); }
+});
+els.exportQuoteBtn.addEventListener('click', () => {
+  const ts = new Date().toISOString().replaceAll(':','-').split('.')[0];
+  const sel = els.courier.value;
+  const level = els.serviceLevel.value;
+  const resFlag = els.residential.checked ? "Yes" : "No";
+  const L = els.len.value||"0", W = els.wid.value||"0", H = els.hei.value||"0";
+  const header = [
+    `© 2025 Glen Carruthers — CPC Calc ${VERSION}`,
+    `Service Level: ${level}`,
+    `Residential: ${resFlag}`,
+    `Dimensions: ${L} x ${W} x ${H} cm`,
+    `----------------------------------------`
+  ].join("\n");
+  const disclaimer = [
+    ``,
+    `----------------------------------------`,
+    `⚠️ Estimated rates only — actual courier costs may vary by region, service level, and account agreements.`,
+    `⚠️ Estimation seulement — les coûts réels peuvent varier selon la région, le niveau de service et les ententes de compte.`
+  ].join("\n");
+  const body = (els.breakdown.textContent || "");
+  const name = (sel==="compare" ? `CPC_Calc_Compare_${ts}.txt` : `CPC_Calc_${sel}_${ts}.txt`);
+  saveBlob(`${header}\n${body}\n${disclaimer}\n`, name);
+});
+
+/* ---- Rates actions ---- */
+els.saveLocalBtn.addEventListener('click', () => {
+  try{
+    const obj = JSON.parse(els.ratesJson.value);
+    localStorage.setItem(LS_KEY, JSON.stringify(obj));
+    els.saveLocalBtn.textContent = "Saved ✓";
+    setTimeout(()=>els.saveLocalBtn.textContent="Save (browser)", 900);
+    updateCalc();
+  }catch{ alert("Cannot save: rates JSON is invalid."); }
+});
+els.loadLocalBtn.addEventListener('click', () => {
+  const saved = loadRatesFromLocal();
+  if(!saved){ alert("No saved rates found in this browser."); return; }
+  putRatesToTextarea(saved);
+  updateCalc();
+});
+els.exportBtn.addEventListener('click', () => {
+  const ts = new Date().toISOString().split('T')[0];
+  saveBlob(els.ratesJson.value, `cpc_calc_rates_${ts}.json`);
+});
+els.importFile.addEventListener('change', async (e) => {
+  const f = e.target.files?.[0]; if(!f) return;
+  const text = await f.text();
+  try{ const obj = JSON.parse(text); putRatesToTextarea(obj); updateCalc(); }
+  catch{ alert("That file isn't valid JSON."); }
+  finally{ els.importFile.value = ""; }
+});
+els.resetDefaultBtn.addEventListener('click', () => {
+  if(confirm("Reset rates to built-in defaults?")){ putRatesToTextarea(DEFAULT_RATES); updateCalc(); }
+});
+els.readmeBtn.addEventListener('click', () => {
+  const rd = els.readme; rd.open = !rd.open;
+  if(rd.open){ rd.scrollIntoView({behavior:'smooth', block:'center'}); }
+});
+
+/* ================
+   PWA: manifest + SW (embedded)
+   ================ */
+function makeIconDataURL(size){
+  const c=document.createElement('canvas'); c.width=c.height=size;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,size,size);
+  ctx.strokeStyle="#dbe4f0"; ctx.lineWidth=size*0.04; ctx.strokeRect(ctx.lineWidth/2,ctx.lineWidth/2,size-ctx.lineWidth,size-ctx.lineWidth);
+  ctx.fillStyle="#0ea5e9"; ctx.beginPath(); ctx.arc(size*0.18,size*0.22,size*0.08,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle="#0ea5e9"; ctx.font=`${Math.floor(size*0.18)}px system-ui,Segoe UI,Arial`;
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("CPC", size*0.5, size*0.42);
+  ctx.fillStyle="#2563eb"; ctx.font=`${Math.floor(size*0.16)}px system-ui,Segoe UI,Arial`;
+  ctx.fillText("Calc", size*0.5, size*0.70);
+  return c.toDataURL("image/png");
+}
+(async function injectManifest(){
+  const icon192 = makeIconDataURL(192);
+  const icon512 = makeIconDataURL(512);
+  const manifest = {
+    name: "CPC Calc",
+    short_name: "CPC Calc",
+    description: "CPC Calc — Mail & courier cost calculator (offline, JSON-configurable rates)",
+    start_url: "./",
+    scope: "./",
+    display: "standalone",
+    background_color: "#e8f3ff",
+    theme_color: "#e8f3ff",
+    icons: [
+      { src: icon192, sizes: "192x192", type: "image/png" },
+      { src: icon512, sizes: "512x512", type: "image/png" }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('link'); link.rel="manifest"; link.href=url;
+  document.head.appendChild(link);
+})();
+(async function registerSW(){
+  if(!('serviceWorker' in navigator)) return;
+  const swCode = `
+    const CACHE = "cpc-calc-v3-4";
+    self.addEventListener("install", e => {
+      e.waitUntil((async ()=>{
+        const c = await caches.open(CACHE);
+        await c.addAll(["./"]);
+      })());
+      self.skipWaiting();
+    });
+    self.addEventListener("activate", e => {
+      e.waitUntil((async ()=>{
+        const keys = await caches.keys();
+        await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
+      })());
+      self.clients.claim();
+    });
+    self.addEventListener("fetch", e => {
+      const req = e.request;
+      e.respondWith((async ()=>{
+        const cached = await caches.match(req);
+        try{
+          const net = await fetch(req);
+          if(req.method==="GET" && net && net.ok){
+            const c = await caches.open(CACHE);
+            c.put(req, net.clone());
+          }
+          return cached || net;
+        }catch{
+          return cached || new Response("<h1>Offline</h1>", {headers:{"Content-Type":"text/html"}});
+        }
+      })());
+    });
+  `;
+  try{
+    const blob = new Blob([swCode], {type:'text/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    await navigator.serviceWorker.register(swUrl, {scope: './'});
+  }catch(e){ /* ignore */ }
+})();
+
+/* Install prompt banner */
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredPrompt = e;
+  els.installBanner.style.display = 'flex';
+});
+els.installBtn.addEventListener('click', async ()=>{
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  els.installBanner.style.display = 'none';
+  deferredPrompt = null;
+});
+els.dismissBtn.addEventListener('click', ()=>{
+  els.installBanner.style.display = 'none';
+});
+</script>
+</body>
+</html>
